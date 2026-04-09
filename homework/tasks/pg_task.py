@@ -20,7 +20,12 @@ class ItemStorage:
         # __init__ method doesn't support awaits.
         #
         # Pool will be configured using env variables.
-        self._pool = await asyncpg.create_pool()
+        self._pool = await asyncpg.create_pool(
+            user="postgres",
+            password="1234",
+            database="postgres",  # или твоя база
+            host="127.0.0.1",
+        )
 
     async def disconnect(self) -> None:
         # Connections should be gracefully closed on app exit to avoid
@@ -37,7 +42,17 @@ class ItemStorage:
         """
         # In production environment we will use migration tool
         # like https://github.com/pressly/goose
-        # YOUR CODE GOES HERE
+        table = """
+        CREATE TABLE IF NOT EXISTS items(
+            item_id bigint primary key,
+            user_id integer not null,
+            title text not null,
+            description text not null
+        );
+
+        """
+        async with self._pool.acquire() as connection:
+            await connection.execute(table)
 
     async def save_items(self, items: list[ItemEntry]) -> None:
         """
@@ -46,7 +61,16 @@ class ItemStorage:
         """
         # Don't use str-formatting, query args should be escaped to avoid
         # sql injections https://habr.com/ru/articles/148151/.
-        # YOUR CODE GOES HERE
+        query = """
+            insert into items
+            (item_id, user_id, title, description) 
+            values ($1, $2, $3, $4)
+        """
+        records = [
+            (item.item_id, item.user_id, item.title, item.description) for item in items
+        ]
+        async with self._pool.acquire() as connection:
+            await connection.executemany(query, records)
 
     async def find_similar_items(
         self, user_id: int, title: str, description: str
@@ -54,4 +78,13 @@ class ItemStorage:
         """
         Напишите код для поиска записей, имеющих указанные user_id, title и description.
         """
-        # YOUR CODE GOES HERE
+        query = """
+            select item_id, user_id, title, description from items
+            where
+                user_id = $1
+                and title = $2
+                and description = $3
+        """
+        async with self._pool.acquire() as connection:
+            rows = await connection.fetch(query, user_id, title, description)
+            return [ItemEntry(**dict(row)) for row in rows]
