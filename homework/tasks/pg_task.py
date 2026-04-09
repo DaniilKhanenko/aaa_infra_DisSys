@@ -20,12 +20,7 @@ class ItemStorage:
         # __init__ method doesn't support awaits.
         #
         # Pool will be configured using env variables.
-        self._pool = await asyncpg.create_pool(
-            user="postgres",
-            password="1234",
-            database="postgres",  # или твоя база
-            host="127.0.0.1",
-        )
+        self._pool = await asyncpg.create_pool()
 
     async def disconnect(self) -> None:
         # Connections should be gracefully closed on app exit to avoid

@@ -30,7 +30,7 @@ async def do_reliable_request(url: str, observer: ResultsObserver) -> None:
                 observer.observe(data)
                 return
 
-            except:
+            except httpx.HTTPError:
                 if i >= (attempts - 1):
                     raise
 
